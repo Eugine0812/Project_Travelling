@@ -17,7 +17,7 @@ dp = Dispatcher(bot, storage=storage)
 
 conn = sqlite3.connect('db.db')
 cur = conn.cursor()
-cur.execute("""CREATE TABLE IF NOT EXISTS users(user_id INTEGER, block INTEGER);""")
+cur.execute("""CREATE TABLE IF NOT EXISTS users(user_id INTEGER, block INTEGER, user_name VARCHAR(20), full_name VARCHAR(20));""")
 conn.commit()
 
 gc = gspread.service_account(filename='credentials.json')
@@ -49,14 +49,17 @@ async def start(message: Message):
             cur.execute(f'''SELECT * FROM users WHERE (user_id="{message.from_user.id}")''')
             entry = cur.fetchone()
             if entry is None:
-                cur.execute(f'''INSERT INTO users VALUES ('{message.from_user.id}', '0')''')
+                cur.execute(f'''INSERT INTO users VALUES ('{message.from_user.id}', '0', '{message.from_user.username}', '{message.from_user.full_name}')''')
                 conn.commit()
-                await message.answer(f"Добро пожаловать, <b>{message.from_user.first_name}!</b>\n"
-                                    "Ниже Вы можете выбрать подходящий для Вас тур и ознакомиться "
-                                    "с расписанием предстоящих туров", parse_mode=types.ParseMode.MARKDOWN_V2,  reply_markup=kb_information)
-
+                await message.answer (f"Добро пожаловать, <b>{message.from_user.first_name}!</b>\n"
+                                       "Ниже Вы можете выбрать подходящий для Вас тур и ознакомиться "
+                                       "с расписанием предстоящих туров", parse_mode=types.ParseMode.HTML,
+                                       reply_markup=kb_information)
                 send_to_sheet(message)
         else:
+            cur = conn.cursor ()
+            cur.execute (f'''SELECT * FROM users WHERE (user_id="{message.from_user.id}")''' )
+            entry1 = cur.fetchone ()
             await message.answer(f"Добро пожаловать, <b>{message.from_user.first_name}!</b>\n"
                                     "Ниже Вы можете выбрать подходящий для Вас тур и ознакомиться "
                                     "с расписанием предстоящих туров", parse_mode=types.ParseMode.HTML, reply_markup=kb_information)
@@ -193,6 +196,7 @@ async def handler(message: types.Message, state: FSMContext):
     cur.execute('''select * from users''')
     results = cur.fetchall()
     await message.answer(f'Людей которые когда либо заходили в бота: {len(results)}')
+    await message.answer(results)
 
 
 if __name__ == '__main__':
